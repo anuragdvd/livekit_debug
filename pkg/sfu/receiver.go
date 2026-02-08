@@ -16,6 +16,7 @@ package sfu
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -496,6 +497,7 @@ func (w *WebRTCReceiver) SetUpTrackPaused(paused bool) {
 }
 
 func (w *WebRTCReceiver) AddDownTrack(track TrackSender) error {
+	fmt.Printf("[LIVEKIT_AUDIO_DEBUG 2] WebRTCReceiver.AddDownTrack - trackID=%s, subscriber=%s\n", w.trackID, track.ID())
 	if w.closed.Load() {
 		return ErrReceiverClosed
 	}

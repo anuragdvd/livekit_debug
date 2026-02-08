@@ -16,6 +16,7 @@ package rtc
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"sync"
 
@@ -79,8 +80,11 @@ func (t *MediaTrackSubscriptions) OnSubscriberAudioCodecChange(f func(subscriber
 }
 
 func (t *MediaTrackSubscriptions) SetMuted(muted bool) {
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 10] MediaTrackSubscriptions.SetMuted - muted=%v\n", muted)
 	// update mute of all subscribed tracks
-	for _, st := range t.getAllSubscribedTracks() {
+	allSubscribedTracks := t.getAllSubscribedTracks()
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 11] MediaTrackSubscriptions.SetMuted - notifying %d subscribers\n", len(allSubscribedTracks))
+	for _, st := range allSubscribedTracks {
 		st.SetPublisherMuted(muted)
 	}
 }

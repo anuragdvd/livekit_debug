@@ -69,6 +69,7 @@ func (s *signalhandler) HandleMessage(msg proto.Message) error {
 		s.params.Participant.AddTrack(msg.AddTrack)
 
 	case *livekit.SignalRequest_Mute:
+		fmt.Printf("[LIVEKIT_MUTE_DEBUG 1] SignalHandler - Mute request received, trackID=%s, muted=%v\n", msg.Mute.Sid, msg.Mute.Muted)
 		s.params.Participant.SetTrackMuted(msg.Mute, false)
 
 	case *livekit.SignalRequest_Subscription:

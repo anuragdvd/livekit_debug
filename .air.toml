@@ -1,0 +1,15 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  args_bin = ["--dev"]
+  bin = "./bin/livekit-server"
+  cmd = "mage build"
+  delay = 1000
+  exclude_dir = ["assets", "tmp", "bin", "vendor", "testdata", "test", "deploy", "tools"]
+  exclude_regex = ["_test.go", "mage_output_file.go"]
+  include_ext = ["go"]
+
+[screen]
+  clear_on_rebuild = false
+  keep_scroll = true

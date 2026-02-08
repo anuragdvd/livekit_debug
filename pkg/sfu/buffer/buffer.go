@@ -399,6 +399,8 @@ func (b *Buffer) Write(pkt []byte) (n int, err error) {
 		return
 	}
 
+	// fmt.Printf("[LIVEKIT_AUDIO_DEBUG 1] Buffer.Write - SSRC=%d, Seq=%d, PT=%d, len=%d\n", rtpPacket.SSRC, rtpPacket.SequenceNumber, rtpPacket.PayloadType, len(pkt))
+
 	b.Lock()
 	if b.closed.Load() {
 		b.Unlock()

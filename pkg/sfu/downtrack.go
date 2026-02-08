@@ -988,6 +988,7 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) int32 {
 	if !d.writable.Load() {
 		return 0
 	}
+	fmt.Printf("[LIVEKIT_AUDIO_DEBUG 3] DownTrack.WriteRTP - trackID=%s, subscriber=%s, seq=%d\n", d.id, d.SubscriberID(), extPkt.Packet.SequenceNumber)
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
 	if tp.shouldDrop {

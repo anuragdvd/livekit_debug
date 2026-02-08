@@ -1681,6 +1681,7 @@ func (f *Forwarder) GetTranslationParams(extPkt *buffer.ExtPacket, layer int32) 
 	defer f.lock.Unlock()
 
 	if f.muted || f.pubMuted {
+		fmt.Printf("[LIVEKIT_MUTE_DEBUG 20] Forwarder dropping packet - muted=%v, pubMuted=%v\n", f.muted, f.pubMuted)
 		return TranslationParams{
 			shouldDrop: true,
 		}, nil

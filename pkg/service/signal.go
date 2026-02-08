@@ -16,6 +16,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
@@ -131,8 +132,10 @@ type signalService struct {
 }
 
 func (r *signalService) RelaySignal(stream psrpc.ServerStream[*rpc.RelaySignalResponse, *rpc.RelaySignalRequest]) (err error) {
+	fmt.Println("[LIVEKIT_DEBUG 12] signalService.RelaySignal - New signal stream received")
 	req, ok := <-stream.Channel()
 	if !ok {
+		fmt.Println("[LIVEKIT_DEBUG ERROR] signalService.RelaySignal - Stream channel closed immediately")
 		return nil
 	}
 
@@ -140,6 +143,7 @@ func (r *signalService) RelaySignal(stream psrpc.ServerStream[*rpc.RelaySignalRe
 	if ss == nil {
 		return errors.New("expected start session message")
 	}
+	fmt.Printf("[LIVEKIT_DEBUG 13] signalService.RelaySignal - StartSession received, room=%s, participant=%s, connID=%s\n", ss.RoomName, ss.Identity, ss.ConnectionId)
 
 	pi, err := routing.ParticipantInitFromStartSession(ss, r.region)
 	if err != nil {

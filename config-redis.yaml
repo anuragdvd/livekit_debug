@@ -1,0 +1,29 @@
+# LiveKit Redis Configuration
+# This enables multi-node routing using Redis
+
+port: 7880
+
+# Enable Redis for multi-node distributed routing
+redis:
+  address: localhost:6379
+
+# Development API keys (change for production)
+keys:
+  devkey: secret
+
+# Room configuration
+room:
+  auto_create: true
+  empty_timeout: 300
+  departure_timeout: 20
+
+# RTC ports
+rtc:
+  port_range_start: 7882
+  port_range_end: 7900
+  tcp_port: 7881
+
+# Enable debug logging to see all routing decisions
+logging:
+  level: debug
+  sample: false

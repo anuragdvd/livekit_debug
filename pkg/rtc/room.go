@@ -439,14 +439,17 @@ func (r *Room) Join(
 	opts *ParticipantOptions,
 	iceServers []*livekit.ICEServer,
 ) error {
+	fmt.Printf("[LIVEKIT_DEBUG 8] Room.Join - Starting Join for participant=%s, room=%s\n", participant.Identity(), r.protoRoom.Name)
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	if r.IsClosed() {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] Room.Join - Room is closed, cannot join participant=%s\n", participant.Identity())
 		return ErrRoomClosed
 	}
 
 	if r.participants[participant.Identity()] != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] Room.Join - Participant already joined: %s\n", participant.Identity())
 		return ErrAlreadyJoined
 	}
 	if r.protoRoom.MaxParticipants > 0 && !participant.IsDependent() {
@@ -467,10 +470,12 @@ func (r *Room) Join(
 
 	r.launchTargetAgents(maps.Values(r.agentDispatches), participant, livekit.JobType_JT_PARTICIPANT)
 
-	r.logger.Debugw(
-		"new participant joined",
+	r.logger.Infow(
+		"participant connected to room",
 		"pID", participant.ID(),
 		"participant", participant.Identity(),
+		"roomName", r.protoRoom.Name,
+		"roomID", r.protoRoom.Sid,
 		"clientInfo", logger.Proto(participant.GetClientInfo()),
 		"options", opts,
 		"numParticipants", len(r.participants),
@@ -486,6 +491,7 @@ func (r *Room) Join(
 	r.participants[participant.Identity()] = participant
 	r.participantOpts[participant.Identity()] = opts
 	r.participantRequestSources[participant.Identity()] = requestSource
+	fmt.Printf("[LIVEKIT_DEBUG 9] Room.Join - Participant added to room map, identity=%s, numParticipants=%d\n", participant.Identity(), len(r.participants))
 
 	if r.onParticipantChanged != nil {
 		r.onParticipantChanged(participant)
@@ -498,12 +504,15 @@ func (r *Room) Join(
 	})
 
 	joinResponse := r.createJoinResponseLocked(participant, iceServers)
+	fmt.Printf("[LIVEKIT_DEBUG 10] Room.Join - Sending join response to participant=%s\n", participant.Identity())
 	if err := participant.SendJoinResponse(joinResponse); err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] Room.Join - Failed to send join response: %v\n", err)
 		prometheus.RecordServiceOperationError("participant_join", "send_response")
 		return err
 	}
 
 	participant.SetMigrateState(types.MigrateStateComplete)
+	fmt.Printf("[LIVEKIT_DEBUG 11] Room.Join - Participant join complete, identity=%s\n", participant.Identity())
 
 	if participant.SubscriberAsPrimary() {
 		// initiates sub connection as primary

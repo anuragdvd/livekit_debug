@@ -71,15 +71,29 @@ func (r *RedisRouter) RegisterNode() error {
 	if err != nil {
 		return err
 	}
+	logger.Infow("[REDIS_ROUTER] Registering node in Redis",
+		"nodeID", r.currentNode.NodeID(),
+		"state", r.currentNode.Clone().State,
+		"redisKey", NodesKey,
+	)
 	if err := r.rc.HSet(r.ctx, NodesKey, string(r.currentNode.NodeID()), data).Err(); err != nil {
 		return errors.Wrap(err, "could not register node")
 	}
+	logger.Infow("[REDIS_ROUTER] Node registered successfully in Redis")
 	return nil
 }
 
 func (r *RedisRouter) UnregisterNode() error {
 	// could be called after Stop(), so we'd want to use an unrelated context
-	return r.rc.HDel(context.Background(), NodesKey, string(r.currentNode.NodeID())).Err()
+	logger.Infow("[REDIS_ROUTER] Unregistering node from Redis",
+		"nodeID", r.currentNode.NodeID(),
+		"redisKey", NodesKey,
+	)
+	err := r.rc.HDel(context.Background(), NodesKey, string(r.currentNode.NodeID())).Err()
+	if err == nil {
+		logger.Infow("[REDIS_ROUTER] Node unregistered successfully from Redis")
+	}
+	return err
 }
 
 func (r *RedisRouter) RemoveDeadNodes() error {
@@ -99,18 +113,36 @@ func (r *RedisRouter) RemoveDeadNodes() error {
 
 // GetNodeForRoom finds the node where the room is hosted at
 func (r *RedisRouter) GetNodeForRoom(_ context.Context, roomName livekit.RoomName) (*livekit.Node, error) {
+	logger.Infow("[REDIS_ROUTER] Looking up node for room in Redis",
+		"roomName", roomName,
+		"redisKey", NodeRoomKey,
+	)
 	nodeID, err := r.rc.HGet(r.ctx, NodeRoomKey, string(roomName)).Result()
 	if err == redis.Nil {
+		logger.Warnw("[REDIS_ROUTER] Room not found in Redis", nil, "roomName", roomName)
 		return nil, ErrNotFound
 	} else if err != nil {
 		return nil, errors.Wrap(err, "could not get node for room")
 	}
 
+	logger.Infow("[REDIS_ROUTER] Found node for room",
+		"roomName", roomName,
+		"nodeID", nodeID,
+	)
 	return r.GetNode(livekit.NodeID(nodeID))
 }
 
 func (r *RedisRouter) SetNodeForRoom(_ context.Context, roomName livekit.RoomName, nodeID livekit.NodeID) error {
-	return r.rc.HSet(r.ctx, NodeRoomKey, string(roomName), string(nodeID)).Err()
+	logger.Infow("[REDIS_ROUTER] Mapping room to node in Redis",
+		"roomName", roomName,
+		"nodeID", nodeID,
+		"redisKey", NodeRoomKey,
+	)
+	err := r.rc.HSet(r.ctx, NodeRoomKey, string(roomName), string(nodeID)).Err()
+	if err == nil {
+		logger.Infow("[REDIS_ROUTER] Room-to-node mapping saved in Redis successfully")
+	}
+	return err
 }
 
 func (r *RedisRouter) ClearRoomState(_ context.Context, roomName livekit.RoomName) error {
@@ -135,6 +167,7 @@ func (r *RedisRouter) GetNode(nodeID livekit.NodeID) (*livekit.Node, error) {
 }
 
 func (r *RedisRouter) ListNodes() ([]*livekit.Node, error) {
+	logger.Infow("[REDIS_ROUTER] Listing all nodes from Redis", "redisKey", NodesKey)
 	items, err := r.rc.HVals(r.ctx, NodesKey).Result()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not list nodes")
@@ -146,6 +179,15 @@ func (r *RedisRouter) ListNodes() ([]*livekit.Node, error) {
 			return nil, err
 		}
 		nodes = append(nodes, &n)
+	}
+	logger.Infow("[REDIS_ROUTER] Found nodes in Redis", "nodeCount", len(nodes))
+	for _, node := range nodes {
+		logger.Infow("[REDIS_ROUTER] Node details",
+			"nodeID", node.Id,
+			"state", node.State,
+			"numRooms", node.Stats.NumRooms,
+			"numClients", node.Stats.NumClients,
+		)
 	}
 	return nodes, nil
 }
@@ -161,11 +203,22 @@ func (r *RedisRouter) CreateRoom(ctx context.Context, req *livekit.CreateRoomReq
 
 // StartParticipantSignal signal connection sets up paths to the RTC node, and starts to route messages to that message queue
 func (r *RedisRouter) StartParticipantSignal(ctx context.Context, roomName livekit.RoomName, pi ParticipantInit) (res StartParticipantSignalResults, err error) {
+	logger.Infow("[REDIS_ROUTER] Starting participant signal routing",
+		"roomName", roomName,
+		"participantIdentity", pi.Identity,
+		"participantID", pi.ID,
+	)
 	rtcNode, err := r.GetNodeForRoom(ctx, roomName)
 	if err != nil {
+		logger.Errorw("[REDIS_ROUTER] Failed to get node for room", err, "roomName", roomName)
 		return
 	}
 
+	logger.Infow("[REDIS_ROUTER] Routing participant to node",
+		"roomName", roomName,
+		"participantIdentity", pi.Identity,
+		"targetNodeID", rtcNode.Id,
+	)
 	return r.StartParticipantSignalWithNodeID(ctx, roomName, pi, livekit.NodeID(rtcNode.Id))
 }
 

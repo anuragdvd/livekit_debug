@@ -250,6 +250,7 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(404)
 		return
 	}
+	fmt.Println("[LIVEKIT_DEBUG 1] RTCService.ServeHTTP - WebSocket connection request received")
 
 	var (
 		roomName            livekit.RoomName
@@ -300,6 +301,7 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		HandleError(w, r, code, err)
 		return
 	}
+	fmt.Printf("[LIVEKIT_DEBUG 2] RTCService.ServeHTTP - Connection validated, roomName=%s, participantIdentity=%s\n", roomName, pi.Identity)
 
 	participantIdentity = pi.Identity
 	if pi.ID != "" {

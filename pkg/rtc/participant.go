@@ -328,6 +328,7 @@ type ParticipantImpl struct {
 }
 
 func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
+	fmt.Printf("[LIVEKIT_DEBUG 20] rtc.NewParticipant - Creating participant identity=%s, sid=%s\n", params.Identity, params.SID)
 	if params.Identity == "" {
 		return nil, ErrEmptyIdentity
 	}
@@ -415,8 +416,10 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 
 	err = p.setupTransportManager()
 	if err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] rtc.NewParticipant - setupTransportManager failed: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("[LIVEKIT_DEBUG 21] rtc.NewParticipant - TransportManager setup complete for %s\n", params.Identity)
 
 	p.setupUpTrackManager()
 	p.setupUpDataTrackManager()
@@ -1096,6 +1099,7 @@ func (p *ParticipantImpl) HandleICETrickle(trickleRequest *livekit.TrickleReques
 
 // HandleOffer an offer from remote participant, used when clients make the initial connection
 func (p *ParticipantImpl) HandleOffer(sd *livekit.SessionDescription) error {
+	fmt.Printf("[LIVEKIT_DEBUG 22] rtc.HandleOffer - Received SDP offer from client for participant=%s\n", p.Identity())
 	offer, offerId, _ := protosignalling.FromProtoSessionDescription(sd)
 	lgr := p.pubLogger.WithUnlikelyValues(
 		"transport", livekit.SignalTarget_PUBLISHER,
@@ -1120,9 +1124,11 @@ func (p *ParticipantImpl) HandleOffer(sd *livekit.SessionDescription) error {
 
 	err = p.TransportManager.HandleOffer(offer, offerId, p.MigrateState() == types.MigrateStateInit)
 	if err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] rtc.HandleOffer - TransportManager.HandleOffer failed: %v\n", err)
 		lgr.Warnw("could not handle offer", err, "mungedOffer", offer)
 		return err
 	}
+	fmt.Printf("[LIVEKIT_DEBUG 23] rtc.HandleOffer - Offer handled, creating WebRTC PeerConnection for %s\n", p.Identity())
 
 	if p.params.UseOneShotSignallingMode {
 		go p.listener().OnSubscriberReady(p)
@@ -2984,6 +2990,7 @@ func (p *ParticipantImpl) HasConnected() bool {
 }
 
 func (p *ParticipantImpl) SetTrackMuted(mute *livekit.MuteTrackRequest, fromAdmin bool) *livekit.TrackInfo {
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 2] Participant.SetTrackMuted - trackID=%s, muted=%v, fromAdmin=%v\n", mute.Sid, mute.Muted, fromAdmin)
 	// when request is coming from admin, send message to current participant
 	if fromAdmin {
 		p.sendTrackMuted(livekit.TrackID(mute.Sid), mute.Muted)
@@ -2994,12 +3001,14 @@ func (p *ParticipantImpl) SetTrackMuted(mute *livekit.MuteTrackRequest, fromAdmi
 
 func (p *ParticipantImpl) setTrackMuted(mute *livekit.MuteTrackRequest, fromAdmin bool) *livekit.TrackInfo {
 	trackID := livekit.TrackID(mute.Sid)
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 3] Participant.setTrackMuted - trackID=%s, muted=%v\n", trackID, mute.Muted)
 	p.dirty.Store(true)
 	if p.supervisor != nil {
 		p.supervisor.SetPublicationMute(trackID, mute.Muted)
 	}
 
 	track, changed := p.UpTrackManager.SetPublishedTrackMuted(trackID, mute.Muted)
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 4] Participant.setTrackMuted - UpTrackManager.SetPublishedTrackMuted returned, track=%v, changed=%v\n", track != nil, changed)
 	var trackInfo *livekit.TrackInfo
 	if track != nil {
 		trackInfo = track.ToProto()

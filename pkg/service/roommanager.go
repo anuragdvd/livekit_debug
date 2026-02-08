@@ -271,7 +271,14 @@ func (r *RoomManager) CreateRoom(ctx context.Context, req *livekit.CreateRoomReq
 	}
 	defer room.Release()
 
-	return room.ToProto(), nil
+	roomProto := room.ToProto()
+	room.Logger().Infow("room created successfully",
+		"roomName", roomProto.Name,
+		"roomID", roomProto.Sid,
+		"maxParticipants", roomProto.MaxParticipants,
+	)
+
+	return roomProto, nil
 }
 
 // StartSession starts WebRTC session when a new participant is connected, takes place on RTC node
@@ -282,10 +289,16 @@ func (r *RoomManager) StartSession(
 	responseSink routing.MessageSink,
 	useOneShotSignallingMode bool,
 ) error {
+	fmt.Printf("[LIVEKIT_DEBUG 3] RoomManager.StartSession - Starting session for participant=%s in room=%s\n", pi.Identity, pi.CreateRoom.Name)
 	sessionStartTime := time.Now()
 
 	createRoom := pi.CreateRoom
 	room, err := r.getOrCreateRoom(ctx, createRoom)
+	if err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] RoomManager.StartSession - Failed to get or create room: %v\n", err)
+		return err
+	}
+	fmt.Printf("[LIVEKIT_DEBUG 4] RoomManager.StartSession - Room retrieved/created, roomName=%s\n", room.Name())
 	if err != nil {
 		return err
 	}
@@ -414,6 +427,7 @@ func (r *RoomManager) StartSession(
 		"numParticipants", room.GetParticipantCount(),
 		"participantInit", &pi,
 	)
+	fmt.Printf("[LIVEKIT_DEBUG 5] RoomManager.StartSession - Creating new participant, sid=%s, identity=%s\n", sid, pi.Identity)
 
 	clientConf := r.clientConfManager.GetConfiguration(pi.Client)
 
@@ -511,15 +525,18 @@ func (r *RoomManager) StartSession(
 	iceConfig := r.setIceConfig(room.Name(), participant)
 
 	// join room
+	fmt.Printf("[LIVEKIT_DEBUG 6] RoomManager.StartSession - Calling room.Join for participant=%s\n", participant.Identity())
 	opts := rtc.ParticipantOptions{
 		AutoSubscribe: pi.AutoSubscribe,
 	}
 	iceServers := r.iceServersForParticipant(apiKey, participant, iceConfig.PreferenceSubscriber == livekit.ICECandidateType_ICT_TLS)
 	if err = room.Join(participant, requestSource, &opts, iceServers); err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] RoomManager.StartSession - room.Join failed: %v\n", err)
 		pLogger.Errorw("could not join room", err)
 		_ = participant.Close(true, types.ParticipantCloseReasonJoinFailed, false)
 		return err
 	}
+	fmt.Printf("[LIVEKIT_DEBUG 7] RoomManager.StartSession - room.Join succeeded for participant=%s\n", participant.Identity())
 
 	var participantServerClosers utils.Closers
 	participantTopic := rpc.FormatParticipantTopic(room.Name(), participant.Identity())
@@ -607,10 +624,13 @@ func (r *RoomManager) getOrCreateRoom(ctx context.Context, createRoom *livekit.C
 	}
 
 	// create new room, get details first
+	fmt.Printf("[LIVEKIT_DEBUG] RoomManager.getOrCreateRoom - Creating/loading room from allocator, roomName=%s\n", roomName)
 	ri, internal, created, err := r.roomAllocator.CreateRoom(ctx, createRoom, true)
 	if err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] RoomManager.getOrCreateRoom - Failed to create room: %v\n", err)
 		return nil, err
 	}
+	fmt.Printf("[LIVEKIT_DEBUG] RoomManager.getOrCreateRoom - Room created=%v, roomSID=%s\n", created, ri.Sid)
 
 	r.lock.Lock()
 

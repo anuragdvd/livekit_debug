@@ -16,6 +16,7 @@ package rtc
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/livekit/protocol/livekit"
@@ -117,10 +118,12 @@ func (u *UpTrackManager) OnPublishedTrackUpdated(f func(track types.MediaTrack))
 }
 
 func (u *UpTrackManager) SetPublishedTrackMuted(trackID livekit.TrackID, muted bool) (types.MediaTrack, bool) {
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 5] UpTrackManager.SetPublishedTrackMuted - trackID=%s, muted=%v\n", trackID, muted)
 	changed := false
 	track := u.GetPublishedTrack(trackID)
 	if track != nil {
 		currentMuted := track.IsMuted()
+		fmt.Printf("[LIVEKIT_MUTE_DEBUG 6] UpTrackManager.SetPublishedTrackMuted - track found, currentMuted=%v, newMuted=%v\n", currentMuted, muted)
 		track.SetMuted(muted)
 
 		if currentMuted != track.IsMuted() {

@@ -502,18 +502,22 @@ func (t *MediaTrackReceiver) IsMuted() bool {
 }
 
 func (t *MediaTrackReceiver) SetMuted(muted bool) {
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 7] MediaTrackReceiver.SetMuted - trackID=%s, muted=%v\n", t.ID(), muted)
 	t.lock.Lock()
 	trackInfo := t.TrackInfoClone()
 	trackInfo.Muted = muted
 	t.trackInfo.Store(trackInfo)
 
 	receivers := t.receivers
+	numReceivers := len(receivers)
 	t.lock.Unlock()
 
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 8] MediaTrackReceiver.SetMuted - pausing %d receivers\n", numReceivers)
 	for _, receiver := range receivers {
 		receiver.SetUpTrackPaused(muted)
 	}
 
+	fmt.Printf("[LIVEKIT_MUTE_DEBUG 9] MediaTrackReceiver.SetMuted - calling MediaTrackSubscriptions.SetMuted\n")
 	t.MediaTrackSubscriptions.SetMuted(muted)
 }
 

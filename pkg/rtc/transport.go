@@ -496,6 +496,11 @@ func newPeerConnection(params TransportParams, onBandwidthEstimator func(estimat
 		webrtc.WithInterceptorRegistry(ir),
 	)
 	pc, err := api.NewPeerConnection(params.Config.Configuration)
+	if err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] transport.newPeerConnection - Failed to create PeerConnection: %v\n", err)
+	} else {
+		fmt.Printf("[LIVEKIT_DEBUG 24] transport.newPeerConnection - WebRTC PeerConnection created successfully\n")
+	}
 	return pc, me, err
 }
 
@@ -797,8 +802,10 @@ func (t *PCTransport) handleConnectionFailed(forceShortConn bool) {
 
 func (t *PCTransport) onICEConnectionStateChange(state webrtc.ICEConnectionState) {
 	t.params.Logger.Debugw("ice connection state change", "state", state.String())
+	fmt.Printf("[LIVEKIT_DEBUG 28] transport.onICEConnectionStateChange - ICE state: %s\n", state.String())
 	switch state {
 	case webrtc.ICEConnectionStateConnected:
+		fmt.Printf("[LIVEKIT_DEBUG 29] transport.onICEConnectionStateChange - WebRTC ICE CONNECTED! Media can now flow.\n")
 		t.setICEConnectedAt(time.Now())
 
 	case webrtc.ICEConnectionStateChecking:
@@ -1623,6 +1630,7 @@ func (t *PCTransport) HandleRemoteDescription(sd webrtc.SessionDescription, remo
 }
 
 func (t *PCTransport) GetAnswer() (webrtc.SessionDescription, uint32, error) {
+	fmt.Printf("[LIVEKIT_DEBUG 25] transport.GetAnswer - Creating SDP answer\n")
 	if !t.params.UseOneShotSignallingMode {
 		return webrtc.SessionDescription{}, 0, ErrNotSynchronousLocalCandidatesMode
 	}
@@ -1634,8 +1642,10 @@ func (t *PCTransport) GetAnswer() (webrtc.SessionDescription, uint32, error) {
 
 	answer, err := t.pc.CreateAnswer(nil)
 	if err != nil {
+		fmt.Printf("[LIVEKIT_DEBUG ERROR] transport.GetAnswer - CreateAnswer failed: %v\n", err)
 		return webrtc.SessionDescription{}, 0, err
 	}
+	fmt.Printf("[LIVEKIT_DEBUG 26] transport.GetAnswer - SDP answer created, setting local description\n")
 
 	if err = t.pc.SetLocalDescription(answer); err != nil {
 		return webrtc.SessionDescription{}, 0, err
@@ -1670,6 +1680,7 @@ func (t *PCTransport) GetAnswer() (webrtc.SessionDescription, uint32, error) {
 	answerId := t.remoteOfferId.Load()
 	t.localAnswerId.Store(answerId)
 
+	fmt.Printf("[LIVEKIT_DEBUG 27] transport.GetAnswer - SDP answer ready with ICE candidates, returning to client\n")
 	return *cld, answerId, nil
 }
 
